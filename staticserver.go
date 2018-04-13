@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io"
@@ -34,6 +36,10 @@ func main() {
 	mux["/"] = index
 	mux["/upload"] = upload
 	mux["/file"] = StaticServer
+	fmt.Println("server is running...")
+	if !isDirExists(Upload_Dir) {
+		os.Mkdir(Upload_Dir, os.ModePerm)
+	}
 	server.ListenAndServe()
 }
 
@@ -50,8 +56,21 @@ func (*Myhandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 
+//判断文件夹是否存在
+func isDirExists(path string) bool {
+	fi, err := os.Stat(path)
+
+	if err != nil {
+		return os.IsExist(err)
+	} else {
+		return fi.IsDir()
+	}
+	panic("not reached")
+}
+
 func upload(w http.ResponseWriter, r *http.Request) {
 
+	//b1 := new(bytes.Buffer)
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles(Template_Dir + "file.html")
 		t.Execute(w, "上传文件")
@@ -62,11 +81,27 @@ func upload(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%v", "上传错误")
 			return
 		}
+
 		fileext := filepath.Ext(handler.Filename)
 		if check(fileext) == false {
 			fmt.Fprintf(w, "%v", "不允许的上传类型")
 			return
 		}
+
+		/*
+			fd, _ := ioutil.ReadAll(file)
+			r := bufio.NewReader(file)
+		*/
+		//计算md5
+		md5hash := md5.New()
+		if _, err := io.Copy(md5hash, file); err != nil {
+			fmt.Fprintf(w, "%v", "md5"+err.Error())
+			return
+		}
+		var m5 = hex.EncodeToString(md5hash.Sum([]byte("")))
+		fmt.Println("hase:", m5)
+		//计算md5 End
+
 		filename := strconv.FormatInt(time.Now().Unix(), 10) + fileext
 		f, _ := os.OpenFile(Upload_Dir+filename, os.O_CREATE|os.O_WRONLY, 0660)
 		_, err = io.Copy(f, file)
