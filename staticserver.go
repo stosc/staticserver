@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"time"
 )
 
@@ -88,10 +88,8 @@ func upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		/*
-			fd, _ := ioutil.ReadAll(file)
-			r := bufio.NewReader(file)
-		*/
+		fd, _ := ioutil.ReadAll(file)
+
 		//计算md5
 		md5hash := md5.New()
 		if _, err := io.Copy(md5hash, file); err != nil {
@@ -99,18 +97,16 @@ func upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var m5 = hex.EncodeToString(md5hash.Sum([]byte("")))
-		fmt.Println("hase:", m5)
+		//fmt.Println("hase:", m5)
 		//计算md5 End
 
-		filename := strconv.FormatInt(time.Now().Unix(), 10) + fileext
-		f, _ := os.OpenFile(Upload_Dir+filename, os.O_CREATE|os.O_WRONLY, 0660)
-		_, err = io.Copy(f, file)
+		filename := m5 + fileext
+		err = ioutil.WriteFile(Upload_Dir+filename, fd, 0666)
 		if err != nil {
 			fmt.Fprintf(w, "%v", "上传失败")
 			return
 		}
-		filedir, _ := filepath.Abs(Upload_Dir + filename)
-		fmt.Fprintf(w, "%v", filename+"上传完成,服务器地址:"+filedir)
+		fmt.Fprintf(w, "%v", filename)
 	}
 }
 
